@@ -1,0 +1,7 @@
+# git ignore
+
+# exclude folders
+dataset/
+
+# exclude futile files
+*.DS_Store
