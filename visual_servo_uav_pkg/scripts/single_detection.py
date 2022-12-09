@@ -222,11 +222,9 @@ def infer(images_path, model, postprocessors, device, output_path):
     im = cv2.rectangle(im,(int((x-w/2)*size_w),int((y+h/2)*size_w)),(int((x+w/2)*size_h),int((y-h/2)*size_h)),(0,0,255),2)
  
    
-    cv2.putText(im,'Drone: '+str(round(conf,4)),(int((x-w/2)*416),int((y-h/2)*416)-10),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),2)
+    im=cv2.putText(im,'Drone: '+str(round(conf,4)),(int((x-w/2)*416),int((y-h/2)*416)-10),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),2)
     
-    filesave = '/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output'+filename
-    print("#########")
-    cv2.imwrite(filesave,im)        
+       
     avg_duration = duration / (len(images_path))
     print("Avg. Time: {:.3f}s".format(avg_duration))
     x, y, w, h = pred_boxes.numpy()[0]
@@ -237,7 +235,10 @@ def infer(images_path, model, postprocessors, device, output_path):
     x_t = np.min( ( x_1 , x_2 ) ) + np.abs( x_2 - x_1 )/2
     y_t = np.min( ( y_1 , y_2 ) ) + np.abs( y_2 - y_1 )/2
     A_t = np.abs( x_2 - x_1 )*np.abs( y_2 - y_1 )
-    
+    filesave = '/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output'+filename
+    print("#########")
+    im=cv2.circle(im, [x_t,y_t])
+    cv2.imwrite(filesave,im) 
     print("desired area for calibration:",A_t)
    
 

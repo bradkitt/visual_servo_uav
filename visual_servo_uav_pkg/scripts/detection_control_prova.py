@@ -40,7 +40,13 @@ img_process = False
 """ global var for activating processing
 """
 cv_image = None 
-# global variable for storing img to be processed
+""" global variable for storing img to be processed
+"""
+
+# TODO create a function dedicated to bbox
+    # call it when acc > 0.5 
+    # this way it should save some computational 
+
 
 def clbk_image(f_img):
     global cv_image
@@ -161,7 +167,6 @@ if __name__ == "__main__":
     
     # node initialisation
     rospy.init_node( "de_tr_co" )
-    # define an image subscriber
     # rospy.loginfo( "de_tr_co Image Subscriber /output/image_raw/compressed..." )
     # img_sub = rospy.Subscriber( "output/image_raw/compressed" , CompressedImage , clbk_image , queue_size=1 )
     cv_bridge_c = CvBridge( )
@@ -250,7 +255,7 @@ if __name__ == "__main__":
                 ]
                 
                 
-                # TODO the algo explodes 
+               
                 outputs = model(image)
                 
                 outputs["pred_logits"] = outputs["pred_logits"].cpu()
@@ -263,19 +268,20 @@ if __name__ == "__main__":
                 pred_logits = pred_logits[ topk.indices ]
                 pred_boxes = pred_boxes[ topk.indices ]
                 
-                #controllo su lista vuota  
+                # emptt list check   
                 x, y, w, h = pred_boxes.detach().numpy()[0] 
                 logit = pred_logits.detach().numpy()[0][-1]
                 
                 OR = np.exp( logit )
                 conf = OR/( 1+OR )
+                # accuracy computation
                 acc=round( conf , 4 )
                 
                 im = cv2.rectangle( im, ( int( ( x-w/2 )*size_w ),int( ( y+h/2 )*size_w ) ), ( int(( x+w/2 )*size_h), int( ( y-h/2 )*size_h ) ) , ( 0 , 0 , 255 ) , 2)
                 im_pub.publish(cv_bridge_c.cv2_to_imgmsg(im, 'bgr8'))
             
                 if acc < 0.5:
-                    #PUBBLICO UNO YAW
+                    # publish a yaw until it founds a reliable bbox
                     command = DroneCommand()
                     command.roll = 0
                     command.pitch = 0
@@ -285,14 +291,19 @@ if __name__ == "__main__":
                     rospy.loginfo( command )
                 
                 else:
+                    # TODO call the function above defined bbox
                     x, y, w, h = pred_boxes.detach().numpy()[0]
                     x_1 = int( ( x-w/2 )*416 ) 
                     x_2 = int( ( x+w/2 )*416 )
                     y_1 = int( ( y-h/2 )*416 )
                     y_2 = int( ( y+h/2 )*416 )
+                    # Bbox drone
                     x_t = np.min( ( x_1 , x_2 ) ) + np.abs( x_2 - x_1 )/2
                     y_t = np.min( ( y_1 , y_2 ) ) + np.abs( y_2 - y_1 )/2
                     A_t = np.abs( x_2 - x_1 )*np.abs( y_2 - y_1 )
+                    #if start==True:
+                       #start=False
+                       #A_d=A_t
                     lmb=0.01
                     gamma=0.01
                     
@@ -317,6 +328,7 @@ if __name__ == "__main__":
                 image.cpu()
                 
                 del image, outputs
+                img_process=False
 
                 gc.collect()
                 torch.cuda.empty_cache()

@@ -169,6 +169,7 @@ include_directories(
    scripts/single_detection.py
    scripts/img_server.py
    scripts/remote_ctrl_interface.py
+   scripts/frame_saver.py
    
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
