@@ -125,7 +125,7 @@ def get_args_parser():
     parser.add_argument('--data_panoptic_path', type=str)
     parser.add_argument('--remove_difficult', action='store_true')
 
-    parser.add_argument('--output_dir', default='/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output',
+    parser.add_argument('--output_dir', default='/home/federico/catkin_ws/src/visual_servo_uav/dataset/output',
                         help='path where to save the results, empty for no saving')
     parser.add_argument('--device', default='cpu',
                         help='device to use for training / testing')
@@ -145,27 +145,35 @@ def infer(images_path, model, postprocessors, device, output_path):
    
     print("processing...{}".format(filename))
     im = cv2.imread(images_path[0])
+    # resize the image to be 416x416 
     im = cv2.resize(im, (416,416), interpolation = cv2.INTER_AREA)
+    # check the size
     print(im.size)
     orig_image = Image.open(images_path[0])
     orig_image=orig_image.resize((416, 416))
+    # take the height and the width of the image 
     w, h = orig_image.size
+    # print them 
     print(w,h)
+    # size width and size height 
     size_w=416
     size_h=416
+    # take the (x,y) coordiantes of the follower camera frame
     x_d=w/2
     y_d=h/2
-
-    
-
-    A_d=5   #Dobbiamo acquisirla
+    # TODO take the reference area as a parameter 
+    A_d = 5   #Dobbiamo acquisirla
+    # print values of the target bbox 
     print("desired values",x_d,y_d,A_d)
+
     transform = make_Drone_transforms("val")
     dummy_target = {
         "size": torch.as_tensor([int(h), int(w)]),
         "orig_size": torch.as_tensor([int(h), int(w)])
     }
     image, targets = transform(orig_image, dummy_target)
+    
+    # unsqueeze turns an n.d. tensor into an (n+1).d. one by adding an extra dimension of depth 1. 
     image = image.unsqueeze(0)
     image = image.to(device)
 
@@ -187,8 +195,14 @@ def infer(images_path, model, postprocessors, device, output_path):
 
     ]
 
+    # inference time
     start_t = time.perf_counter()
     outputs = model(image)
+    # return a boolean mask returning images with no_class
+    no_class_mask = model.get_no_class_object_mask(outputs)
+    no_class_objects = outputs[no_class_mask]
+    print("[no_class_objects]:\n", no_class_objects)
+    
     end_t = time.perf_counter()
     
     outputs["pred_logits"] = outputs["pred_logits"].cpu()
@@ -215,31 +229,44 @@ def infer(images_path, model, postprocessors, device, output_path):
     OR = np.exp(logit)
     conf = OR/(1+OR)
     #print(conf)
+
+    # compute duration of inference time 
     infer_time = end_t - start_t
     duration += infer_time
+
     print("Processing...{} ({:.3f}s)".format(filename, infer_time))
-    
+    # drawing bounding box cotours
     im = cv2.rectangle(im,(int((x-w/2)*size_w),int((y+h/2)*size_w)),(int((x+w/2)*size_h),int((y-h/2)*size_h)),(0,0,255),2)
- 
-   
-    im=cv2.putText(im,'Drone: '+str(round(conf,4)),(int((x-w/2)*416),int((y-h/2)*416)-10),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),2)
+    # put drone text with cocnfidence 
+    im = cv2.putText(im,'Drone: '+ str(round(conf,4)),(int((x-w/2)*416),int((y-h/2)*416)-10),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),2)
     
-       
+     
     avg_duration = duration / (len(images_path))
     print("Avg. Time: {:.3f}s".format(avg_duration))
+    
+    # extract the first pred_box 
     x, y, w, h = pred_boxes.numpy()[0]
-    x_1 = int( ( x-w/2 )*416 ) 
-    x_2 = int( ( x+w/2 )*416 )
+    # bottom left bbox
+    x_1 = int( ( x-w/2 )*416 )
     y_1 = int( ( y-h/2 )*416 )
+    # top right bbox
+    x_2 = int( ( x+w/2 )*416 )
     y_2 = int( ( y+h/2 )*416 )
+    # error between the center of the follower camera frame and leader bbox
     x_t = np.min( ( x_1 , x_2 ) ) + np.abs( x_2 - x_1 )/2
     y_t = np.min( ( y_1 , y_2 ) ) + np.abs( y_2 - y_1 )/2
     A_t = np.abs( x_2 - x_1 )*np.abs( y_2 - y_1 )
-    filesave = '/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output'+filename
-    print("#########")
-    im=cv2.circle(im, [x_t,y_t])
+
+    # filesave = '/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output'+filename
+    filesave = '/home/federico/catkin_ws/src/visual_servo_uav/dataset/output'+filename
+
+    print("ready to show the area")
+    # im=cv2.circle(im, [x_t,y_t], 1, (255,0,0), thickness=1)
     cv2.imwrite(filesave,im) 
     print("desired area for calibration:",A_t)
+
+    # compute the error between center of the frame and center of thebbox
+    
    
 
 if __name__ == "__main__":
@@ -254,7 +281,9 @@ if __name__ == "__main__":
         checkpoint = torch.load(args.resume, map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     model.to(device)
-    shutil.rmtree('/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output')
-    os.mkdir('/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output')
+    # shutil.rmtree('/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output')
+    # os.mkdir('/home/freddyboy/ros_ws/src/visual_servo_uav/dataset/output')
+    shutil.rmtree('/home/federico/catkin_ws/src/visual_servo_uav/dataset/output')
+    os.mkdir('/home/federico/catkin_ws/src/visual_servo_uav/dataset/output')
     image_paths = get_images(args.data_path)
     infer(image_paths, model, postprocessors, device, args.output_dir)

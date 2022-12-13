@@ -3,6 +3,7 @@
 # exclude folders
 # dataset/
 output_model/
+camera_calibration/
 
 # exclude futile files
 *.DS_Store

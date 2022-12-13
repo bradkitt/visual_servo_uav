@@ -18,7 +18,7 @@ import numpy as np
 
 
 # global Var
-outSavedPath = "/home/federico/catkin_ws/src/visual_servo_uav/detections"
+outSavedPath = "/home/federico/catkin_ws/src/visual_servo_uav/leader_detections"
 # global image format for CV
 cvImage = None
 # counter: for debugging 
@@ -46,12 +46,13 @@ def frame_cbk(data):
 	# change directory 
 	os.chdir(outSavedPath)
 	frame_info(cvImage)
-	img_ret = cv2.imwrite(f'/home/federico/catkin_ws/src/visual_servo_uav/detections/image_{counter}.jpg',cvImage)
+	img_ret = cv2.imwrite(f'/home/federico/catkin_ws/src/visual_servo_uav/leader_detections/single_frame_bbox/image_{counter}.jpg',cvImage)
 	if img_ret:
 		rospy.loginfo(f' Successfully saved image_{counter}.jpg')
 		counter += 1
 		# print an image every two seconds
-		time.sleep(2)	
+		time.sleep(2)
+		
 	else:
 		rospy.loginfo(' Error while saving ...')
 
@@ -60,7 +61,9 @@ def frame_cbk(data):
 if __name__ == '__main__':
 	rospy.init_node("frame_saver")
 	rospy.loginfo(" Frame saver ready to log! ")
-	frame_sub = rospy.Subscriber("/output/image_raw", CompressedImage, frame_cbk, queue_size=1 )
+	#frame_sub = rospy.Subscriber("/output/image_raw", CompressedImage, frame_cbk, queue_size=1 )
+	frame_sub = rospy.Subscriber("/output/detected_image", CompressedImage, frame_cbk, queue_size=1 )
+
 	# fr = rospy.Rate(15)
 	rospy.spin()
 
